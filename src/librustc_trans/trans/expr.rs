@@ -812,11 +812,10 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             debug!("trans_index: len {}", bcx.val_to_string(len));
 
             let bounds_check = ICmp(bcx, llvm::IntUGE, ix_val, len);
-            let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
-            let expected = Call(bcx,
-                                expect,
-                                &[bounds_check, C_bool(ccx, false)],
-                                None);
+            let expected = CallIntrinsic(bcx,
+                                         "llvm.expect.i1",
+                                         &[bounds_check, C_bool(ccx, false)],
+                                         None);
             bcx = with_cond(bcx, expected, |bcx| {
                 controlflow::trans_fail_bounds_check(bcx,
                                                      index_expr.span,

@@ -686,6 +686,13 @@ pub fn Call(cx: Block, fn_: ValueRef, args: &[ValueRef],
     B(cx).call(fn_, args, attributes)
 }
 
+pub fn CallIntrinsic(cx: Block, fn_name: &'static str, args: &[ValueRef],
+                     attributes: Option<AttrBuilder>) -> ValueRef {
+    let fn_ = cx.ccx().get_intrinsic(&fn_name);
+    if cx.unreachable.get() { return _UndefReturn(cx, fn_); }
+    B(cx).call(fn_, args, attributes)
+}
+
 pub fn CallWithConv(cx: Block, fn_: ValueRef, args: &[ValueRef], conv: CallConv,
                     attributes: Option<AttrBuilder>) -> ValueRef {
     if cx.unreachable.get() { return _UndefReturn(cx, fn_); }

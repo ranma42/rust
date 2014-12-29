@@ -34,7 +34,7 @@ use syntax::ast;
 use syntax::parse::token;
 use util::ppaux::ty_to_string;
 
-pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
+pub fn get_simple_intrinsic(item: &ast::ForeignItem) -> Option<&'static str> {
     let name = match token::get_ident(item.ident).get() {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
@@ -84,7 +84,7 @@ pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Opti
         "assume" => "llvm.assume",
         _ => return None
     };
-    Some(ccx.get_intrinsic(&name))
+    Some(name)
 }
 
 /// Performs late verification that intrinsics are used correctly. At present,
@@ -263,8 +263,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     // These are the only intrinsic functions that diverge.
     if name.get() == "abort" {
-        let llfn = ccx.get_intrinsic(&("llvm.trap"));
-        Call(bcx, llfn, &[], None);
+        CallIntrinsic(bcx, "llvm.trap", &[], None);
         Unreachable(bcx);
         return Result::new(bcx, C_undef(Type::nil(ccx).ptr_to()));
     } else if name.get() == "unreachable" {
@@ -292,14 +291,13 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     };
 
-    let simple = get_simple_intrinsic(ccx, &*foreign_item);
+    let simple = get_simple_intrinsic(&*foreign_item);
     let llval = match (simple, name.get()) {
         (Some(llfn), _) => {
-            Call(bcx, llfn, llargs.as_slice(), None)
+            CallIntrinsic(bcx, llfn, llargs.as_slice(), None)
         }
         (_, "breakpoint") => {
-            let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
-            Call(bcx, llfn, &[], None)
+            CallIntrinsic(bcx, "llvm.debugtrap", &[], None)
         }
         (_, "size_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
@@ -634,10 +632,9 @@ fn copy_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let dst_ptr = PointerCast(bcx, dst, Type::i8p(ccx));
     let src_ptr = PointerCast(bcx, src, Type::i8p(ccx));
-    let llfn = ccx.get_intrinsic(&name);
 
-    Call(bcx, llfn, &[dst_ptr, src_ptr, Mul(bcx, size, count), align,
-                      C_bool(ccx, volatile)], None)
+    CallIntrinsic(bcx, name, &[dst_ptr, src_ptr, Mul(bcx, size, count), align,
+                               C_bool(ccx, volatile)], None)
 }
 
 fn memset_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, volatile: bool, tp_ty: Ty<'tcx>,
@@ -653,24 +650,20 @@ fn memset_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, volatile: bool, tp_ty: T
     };
 
     let dst_ptr = PointerCast(bcx, dst, Type::i8p(ccx));
-    let llfn = ccx.get_intrinsic(&name);
 
-    Call(bcx, llfn, &[dst_ptr, val, Mul(bcx, size, count), align,
-                      C_bool(ccx, volatile)], None)
+    CallIntrinsic(bcx, name, &[dst_ptr, val, Mul(bcx, size, count), align,
+                               C_bool(ccx, volatile)], None)
 }
 
 fn count_zeros_intrinsic(bcx: Block, name: &'static str, val: ValueRef) -> ValueRef {
     let y = C_bool(bcx.ccx(), false);
-    let llfn = bcx.ccx().get_intrinsic(&name);
-    Call(bcx, llfn, &[val, y], None)
+    CallIntrinsic(bcx, name, &[val, y], None)
 }
 
 fn with_overflow_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, name: &'static str,
                                        t: Ty<'tcx>, a: ValueRef, b: ValueRef) -> ValueRef {
-    let llfn = bcx.ccx().get_intrinsic(&name);
-
     // Convert `i1` to a `bool`, and write it to the out parameter
-    let val = Call(bcx, llfn, &[a, b], None);
+    let val = CallIntrinsic(bcx, name, &[a, b], None);
     let result = ExtractValue(bcx, val, 0);
     let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
     let ret = C_undef(type_of::type_of(bcx.ccx(), t));
