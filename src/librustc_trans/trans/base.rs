@@ -222,6 +222,14 @@ pub fn decl_cdecl_fn(ccx: &CrateContext,
     decl_fn(ccx, name, llvm::CCallConv, ty, ty::FnConverging(output))
 }
 
+// only use this for LLVM intrinsics, use `get_rust_fn` for Rust functions
+pub fn decl_intrinsic_fn(ccx: &CrateContext,
+                     name: &str,
+                     ty: Type,
+                     output: Ty) -> ValueRef {
+    decl_fn(ccx, name, llvm::CCallConv, ty, ty::FnConverging(output))
+}
+
 // only use this for foreign function ABIs and glue, use `get_extern_rust_fn` for Rust functions
 pub fn get_extern_fn(ccx: &CrateContext,
                      externs: &mut ExternMap,
@@ -1126,8 +1134,7 @@ pub fn call_lifetime_start(cx: Block, ptr: ValueRef) {
 
     let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
-    let lifetime_start = ccx.get_intrinsic(&"llvm.lifetime.start");
-    Call(cx, lifetime_start, &[llsize, ptr], None);
+    CallIntrinsic(cx, "llvm.lifetime.start", &[llsize, ptr], None);
 }
 
 pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
@@ -1140,8 +1147,7 @@ pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
 
     let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
-    let lifetime_end = ccx.get_intrinsic(&"llvm.lifetime.end");
-    Call(cx, lifetime_end, &[llsize, ptr], None);
+    CallIntrinsic(cx, "llvm.lifetime.end", &[llsize, ptr], None);
 }
 
 pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
@@ -1152,13 +1158,12 @@ pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, a
         "64" => "llvm.memcpy.p0i8.p0i8.i64",
         tws => panic!("Unsupported target word size for memcpy: {}", tws),
     };
-    let memcpy = ccx.get_intrinsic(&key);
     let src_ptr = PointerCast(cx, src, Type::i8p(ccx));
     let dst_ptr = PointerCast(cx, dst, Type::i8p(ccx));
     let size = IntCast(cx, n_bytes, ccx.int_type());
     let align = C_i32(ccx, align as i32);
     let volatile = C_bool(ccx, false);
-    Call(cx, memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
+    CallIntrinsic(cx, key, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
 pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
