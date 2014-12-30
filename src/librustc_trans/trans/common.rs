@@ -57,8 +57,8 @@ use util::nodemap::FnvHashSet;
 
 pub use trans::context::CrateContext;
 
-pub const GLUE_CALL_CONV: llvm::CallConv = llvm::CCallConv;
-pub const RUST_CALL_CONV: llvm::CallConv = llvm::CCallConv;
+pub const GLUE_CALL_CONV: llvm::CallConv = llvm::X86StdcallCallConv;
+pub const RUST_CALL_CONV: llvm::CallConv = llvm::X86StdcallCallConv;
 
 // Is the type's representation size known at compile time?
 pub fn type_is_sized<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
