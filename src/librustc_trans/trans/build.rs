@@ -680,10 +680,10 @@ pub fn InlineAsmCall(cx: Block, asm: *const c_char, cons: *const c_char,
     B(cx).inline_asm_call(asm, cons, inputs, output, volatile, alignstack, dia)
 }
 
-pub fn Call(cx: Block, fn_: ValueRef, args: &[ValueRef],
-            attributes: Option<AttrBuilder>) -> ValueRef {
+pub fn CallGlue(cx: Block, fn_: ValueRef, args: &[ValueRef],
+                attributes: Option<AttrBuilder>) -> ValueRef {
     if cx.unreachable.get() { return _UndefReturn(cx, fn_); }
-    B(cx).call(fn_, args, attributes)
+    B(cx).call_with_conv(fn_, args, GLUE_CALL_CONV, attributes)
 }
 
 pub fn CallIntrinsic(cx: Block, fn_name: &'static str, args: &[ValueRef],
@@ -691,6 +691,12 @@ pub fn CallIntrinsic(cx: Block, fn_name: &'static str, args: &[ValueRef],
     let fn_ = cx.ccx().get_intrinsic(&fn_name);
     if cx.unreachable.get() { return _UndefReturn(cx, fn_); }
     B(cx).call(fn_, args, attributes)
+}
+
+pub fn CallRust(cx: Block, fn_: ValueRef, args: &[ValueRef],
+                attributes: Option<AttrBuilder>) -> ValueRef {
+    if cx.unreachable.get() { return _UndefReturn(cx, fn_); }
+    B(cx).call_with_conv(fn_, args, RUST_CALL_CONV, attributes)
 }
 
 pub fn CallWithConv(cx: Block, fn_: ValueRef, args: &[ValueRef], conv: CallConv,

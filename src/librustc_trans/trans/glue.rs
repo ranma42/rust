@@ -125,7 +125,7 @@ pub fn drop_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             None => debuginfo::clear_source_location(bcx.fcx)
         };
 
-        Call(bcx, glue, &[ptr], None);
+        CallGlue(bcx, glue, &[ptr], None);
     }
     bcx
 }
@@ -160,7 +160,7 @@ pub fn get_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Val
 
     let (glue, new_sym) = match ccx.available_drop_glues().borrow().get(&t) {
         Some(old_sym) => {
-            let glue = decl_cdecl_fn(ccx, old_sym[], llfnty, ty::mk_nil(ccx.tcx()));
+            let glue = decl_glue_fn(ccx, old_sym[], llfnty, ty::mk_nil(ccx.tcx()));
             (glue, None)
         },
         None => {
@@ -376,7 +376,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                     with_cond(bcx, IsNotNull(bcx, concrete_ptr), |bcx| {
                         let dtor_ptr = Load(bcx, GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]));
                         let dtor = Load(bcx, dtor_ptr);
-                        Call(bcx,
+                        CallRust(bcx,
                              dtor,
                              &[PointerCast(bcx, lluniquevalue, Type::i8p(bcx.ccx()))],
                              None);
@@ -448,7 +448,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
             with_cond(bcx, IsNotNull(bcx, env), |bcx| {
                 let dtor_ptr = GEPi(bcx, env, &[0u, abi::BOX_FIELD_DROP_GLUE]);
                 let dtor = Load(bcx, dtor_ptr);
-                Call(bcx, dtor, &[PointerCast(bcx, box_cell_v, Type::i8p(bcx.ccx()))], None);
+                CallRust(bcx, dtor, &[PointerCast(bcx, box_cell_v, Type::i8p(bcx.ccx()))], None);
                 bcx
             })
         }
@@ -460,7 +460,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
             let lluniquevalue = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
             let dtor_ptr = Load(bcx, GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]));
             let dtor = Load(bcx, dtor_ptr);
-            Call(bcx,
+            CallRust(bcx,
                  dtor,
                  &[PointerCast(bcx, Load(bcx, lluniquevalue), Type::i8p(bcx.ccx()))],
                  None);
@@ -525,7 +525,7 @@ fn declare_generic_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
         ccx,
         t,
         format!("glue_{}", name)[]);
-    let llfn = decl_cdecl_fn(ccx, fn_nm[], llfnty, ty::mk_nil(ccx.tcx()));
+    let llfn = decl_glue_fn(ccx, fn_nm[], llfnty, ty::mk_nil(ccx.tcx()));
     note_unique_llvm_symbol(ccx, fn_nm.clone());
     return (fn_nm, llfn);
 }

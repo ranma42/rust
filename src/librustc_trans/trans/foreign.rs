@@ -744,7 +744,8 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         debug!("calling llrustfn = {}, t = {}",
                ccx.tn().val_to_string(llrustfn), t.repr(ccx.tcx()));
         let attributes = base::get_fn_llvm_attributes(ccx, t);
-        let llrust_ret_val = builder.call(llrustfn, llrust_args[], Some(attributes));
+        let llrust_ret_val = builder.call_with_conv(llrustfn, llrust_args[],
+                                                    RUST_CALL_CONV, Some(attributes));
 
         // Get the return value where the foreign fn expects it.
         let llforeign_ret_ty = match tys.fn_ty.ret_ty.cast {

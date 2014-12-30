@@ -183,7 +183,7 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     }
 }
 
-// only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
+// only use this for foreign function ABIs, use `decl_rust_fn` for Rust functions
 pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
                ty: Type, output: ty::FnOutput) -> ValueRef {
 
@@ -214,12 +214,20 @@ pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
     llfn
 }
 
-// only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
+// only use this for "C" foreign functions, use `decl_rust_fn` for Rust functions
 pub fn decl_cdecl_fn(ccx: &CrateContext,
                      name: &str,
                      ty: Type,
                      output: Ty) -> ValueRef {
     decl_fn(ccx, name, llvm::CCallConv, ty, ty::FnConverging(output))
+}
+
+// only use this for glue, use `decl_rust_fn` for Rust functions
+pub fn decl_glue_fn(ccx: &CrateContext,
+                     name: &str,
+                     ty: Type,
+                     output: Ty) -> ValueRef {
+    decl_fn(ccx, name, common::GLUE_CALL_CONV, ty, ty::FnConverging(output))
 }
 
 // only use this for LLVM intrinsics, use `get_rust_fn` for Rust functions
@@ -230,7 +238,7 @@ pub fn decl_intrinsic_fn(ccx: &CrateContext,
     decl_fn(ccx, name, llvm::CCallConv, ty, ty::FnConverging(output))
 }
 
-// only use this for foreign function ABIs and glue, use `get_extern_rust_fn` for Rust functions
+// only use this for foreign function ABIs, use `get_extern_rust_fn` for Rust functions
 pub fn get_extern_fn(ccx: &CrateContext,
                      externs: &mut ExternMap,
                      name: &str,
@@ -315,7 +323,7 @@ pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            inputs.len(),
            ccx.tn().type_to_string(llfty));
 
-    let llfn = decl_fn(ccx, name, llvm::CCallConv, llfty, output);
+    let llfn = decl_fn(ccx, name, common::RUST_CALL_CONV, llfty, output);
     let attrs = get_fn_llvm_attributes(ccx, fn_ty);
     attrs.apply_llfn(llfn);
 
@@ -556,7 +564,7 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         get_extern_fn(ccx,
                       &mut *ccx.externs().borrow_mut(),
                       name[],
-                      llvm::CCallConv,
+                      common::RUST_CALL_CONV,
                       llty,
                       dtor_ty)
     }
@@ -1049,7 +1057,7 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             None => debuginfo::clear_source_location(bcx.fcx)
         };
 
-        let llresult = Call(bcx, llfn, llargs[], Some(attributes));
+        let llresult = CallRust(bcx, llfn, llargs[], Some(attributes));
         return (llresult, bcx);
     }
 }
@@ -2728,6 +2736,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
                                              args.as_ptr(),
                                              args.len() as c_uint,
                                              noname());
+            llvm::SetInstructionCallConv(result, common::RUST_CALL_CONV);
 
             llvm::LLVMBuildRet(bld, result);
         }

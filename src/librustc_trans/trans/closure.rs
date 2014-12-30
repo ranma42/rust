@@ -662,7 +662,7 @@ pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
     llargs.extend(args.iter().map(|arg| arg.val));
 
-    let retval = Call(bcx, fn_ptr, llargs.as_slice(), None);
+    let retval = CallRust(bcx, fn_ptr, llargs.as_slice(), None);
     match f.sig.0.output {
         ty::FnConverging(output_type) => {
             if return_type_is_void(ccx, output_type) || fcx.llretslotptr.get().is_some() {
