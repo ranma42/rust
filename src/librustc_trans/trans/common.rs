@@ -56,8 +56,8 @@ use syntax::parse::token;
 
 pub use trans::context::CrateContext;
 
-pub const GLUE_CALL_CONV: llvm::CallConv = llvm::CCallConv;
-pub const RUST_CALL_CONV: llvm::CallConv = llvm::CCallConv;
+pub const GLUE_CALL_CONV: llvm::CallConv = llvm::X86StdcallCallConv;
+pub const RUST_CALL_CONV: llvm::CallConv = llvm::X86StdcallCallConv;
 
 fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                        ty: Ty<'tcx>) -> bool {
