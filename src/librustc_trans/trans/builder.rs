@@ -175,6 +175,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                           then,
                                           catch,
                                           noname());
+            llvm::SetInstructionCallConv(v, RUST_CALL_CONV);
             match attributes {
                 Some(a) => a.apply_callsite(v),
                 None => {}
