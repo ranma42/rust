@@ -58,8 +58,8 @@ use util::nodemap::FnvHashSet;
 
 pub use trans::context::CrateContext;
 
-pub const GLUE_CALL_CONV: llvm::CallConv = llvm::CCallConv;
-pub const RUST_CALL_CONV: llvm::CallConv = llvm::CCallConv;
+pub const GLUE_CALL_CONV: llvm::CallConv = llvm::X86StdcallCallConv;
+pub const RUST_CALL_CONV: llvm::CallConv = llvm::X86StdcallCallConv;
 
 /// Returns an equivalent value with all free regions removed (note
 /// that late-bound regions remain, because they are important for
